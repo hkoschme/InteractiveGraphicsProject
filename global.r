@@ -1,10 +1,10 @@
 #load libraries
-
+library(shiny)
 library(datasets)
 library(ggmap)
 library(leaflet)
-library(shiny)
 library(plyr)
+library(dplyr)
 
 #load data
 flights <- read.csv("flights.csv")
@@ -39,6 +39,7 @@ airports <- left_join(airports, count_dep_delays_df, by = c("IATA_CODE"  = "code
 v1fun <- function(x){
   x$V1
 }
+origin_airport_airline_delays <- ddply(origins_and_departures, .(ORIGIN_AIRPORT, AIRLINE), sumfun)
 airport_vs_airline_delays <- daply(origin_airport_airline_delays, .(ORIGIN_AIRPORT, AIRLINE), v1fun)
 airport_vs_airline_delays <- as.data.frame(airport_vs_airline_delays)
 airport_vs_airline_delays$names <- row.names(airport_vs_airline_delays)
