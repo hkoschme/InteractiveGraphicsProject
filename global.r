@@ -3,8 +3,10 @@ library(shiny)
 library(datasets)
 library(ggmap)
 library(leaflet)
+
 library(plyr)
 library(dplyr)
+library(DT)
 
 #load data
 flights <- read.csv("flights.csv")
@@ -22,10 +24,10 @@ flights <- flights[grep("[[:digit:]]+",flights$ORIGIN_AIRPORT, invert=TRUE), ]
 
 #add binary variable containing whether there was a delay
 delay_var <- flights$DEPARTURE_DELAY > 0
-flights$delay_var <- delay_var
+big_flights$delay_var <- delay_var
 
 #add number of delays per airport to airports df
-origins_and_departures <- flights[,c("ORIGIN_AIRPORT","delay_var", "AIRLINE")]
+origins_and_departures <- big_flights[,c("ORIGIN_AIRPORT","delay_var", "AIRLINE")]
 split_origin_airport <- split(origins_and_departures, origins_and_departures$ORIGIN_AIRPORT)
 sumfun <- function(x){
   sum(x$delay_var, na.rm = TRUE)

@@ -1,8 +1,10 @@
 
 
 
-function(input, output){
+function(input, output, session){
   output$leaflet1 <- renderLeaflet({
+    
+    # selected_data <- subset(airports, a)
     
     m_leaflet <- leaflet() %>% addTiles()%>%
       setView(lng = -93.85, lat = 37.45, zoom = 4) %>%
@@ -11,7 +13,7 @@ function(input, output){
                          id = "mapbox.light",
                          accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) %>%
       addCircles(airports, lng = airports$LONGITUDE, lat = airports$LATITUDE, 
-                 radius = airports$count_dep_delays)
+                 radius = airports$MQ)
     # if()
     # addLegend(pal = pal, 
     #           values = ~world_info$lifeExp,
