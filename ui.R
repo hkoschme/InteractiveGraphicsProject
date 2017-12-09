@@ -1,5 +1,6 @@
 library(shinydashboard)
 library(shinythemes)
+library(shiny)
 
 dashboardPage(
   
@@ -9,7 +10,15 @@ dashboardPage(
     fluidPage(
       fluidRow(
         box(
-          leafletOutput(outputId = "leaflet", width = "650px"), width = 12
+          leafletOutput(outputId = "leaflet1", width = "650px"), width = 12
+        ),
+        selectizeInput(inputId = "airlinesLeaflet1", label = "Airlines", 
+                        choices = airliners_list,
+                        multiple = TRUE)
+      ),
+      fluidRow(
+        box(
+          leafletOutput(outputId = "leaflet2", width = "650px"), width = 12
         )
       )
     )

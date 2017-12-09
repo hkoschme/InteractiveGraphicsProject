@@ -13,10 +13,11 @@ airlines <- read.csv("airlines.csv")
 
 
 
-#adjustments to data
+##############adjustments to data
 
 #remove small airports
 flights$ORIGIN_AIRPORT <- as.character(flights$ORIGIN_AIRPORT)
+flights$DESTINATION_AIRPORT <- as.character(flights$DESTINATION_AIRPORT)
 flights <- flights[grep("[[:digit:]]+",flights$ORIGIN_AIRPORT, invert=TRUE), ]
 
 #add binary variable containing whether there was a delay
@@ -45,4 +46,20 @@ airport_vs_airline_delays <- as.data.frame(airport_vs_airline_delays)
 airport_vs_airline_delays$names <- row.names(airport_vs_airline_delays)
 airports <- left_join(airports, airport_vs_airline_delays, by = c("IATA_CODE" = "names"))
 
+#airport names and airlines
+airport_codes <- airports$IATA_CODE
+airliners <- airlines$IATA_CODE
+airliners_list <- as.list(airliners)
+names(airliners_list) <- airlines$AIRLINE
+
+#pittsburgh flights data frames for departures and arrivals
+pittsburgh_flights_origin <- flights[flights$ORIGIN_AIRPORT == 
+                                       "PIT", c("DAY_OF_WEEK",
+                                                "AIRLINE", 
+                                                "ORIGIN_AIRPORT",
+                                                "DESTINATION_AIRPORT")]
+pittsburgh_flights_destination <- flights[flights$DESTINATION_AIRPORT == 
+                                            "PIT",c("DAY_OF_WEEK","AIRLINE", 
+                                                    "ORIGIN_AIRPORT", 
+                                                    "DESTINATION_AIRPORT")]
 
