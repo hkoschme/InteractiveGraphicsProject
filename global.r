@@ -1,27 +1,239 @@
 #load libraries
 library(shiny)
 library(shinydashboard)
-library(shinythemes)
+library(leaflet)
+library(plotly)
+library(tidyverse)
+library(forcats)
+library(reshape2)
+library(sp)
 library(datasets)
 library(ggmap)
-library(leaflet)
-
+library(maps)
 library(plyr)
 library(dplyr)
 library(DT)
 library(data.table)
 library(htmltools)
 library(geosphere)
+library(rgeos)
+library(scales)
 
 #load data
 flights <- fread("flights.csv")
 airports <- read.csv("airports.csv")
 airlines <- read.csv("airlines.csv")
 
-
+#add theme
+nikitagu_315_theme <-  theme_bw() + 
+  theme(axis.text = element_text(size = 10, color = "royalblue2"), 
+        text = element_text(size = 12, face = "bold", 
+                            color = "royalblue4"))
 
 ##############adjustments to data
 
+################# NIKITA NIKITA NIKITA
+#add binary variable containing whether there was a delay
+flights$dept_delay_var <- ifelse((flights$DEPARTURE_DELAY > 0 | is.na(flights$DEPARTURE_DELAY)), T, F)
+flights$arr_delay_var <- ifelse((flights$ARRIVAL_DELAY > 0 | is.na(flights$ARRIVAL_DELAY)), T, F)
+
+#some of our airports (the small ones) have numbers for IATA_CODE
+#read the dataset linking IATA_CODE numbers with airport names & locations
+airport_usdot <- read_csv("airport_usdot.csv")
+#edit the dataset and rearrange columns to bind this dataset with the old airports df
+for(i in 1:nrow(airport_usdot)) {
+  airport_usdot$Name[i] <- substr(airport_usdot$Name[i], 1,
+                                  nchar(airport_usdot$Name[i])-1)
+}
+airport_usdot_US <-
+  airport_usdot[nchar(airport_usdot$State_Country) == 2,]
+airport_usdot_US <- 
+  data.frame(IATA_CODE = as.factor(airport_usdot_US$Code),
+             AIRPORT = airport_usdot_US$Name,
+             CITY = NA,
+             STATE = airport_usdot_US$State_Country,
+             COUNTRY = "USA",
+             LATITUDE = NA,
+             LONGITUDE = NA)
+airports_complete <- rbind(airports, airport_usdot_US)
+#now we have finished combining the airports datasets
+
+
+#add region to dataset
+airports_complete$REGION <- state.region[match(airports_complete$STATE,state.abb)]
+#remove datasets with missing regions (Puerto Rico) and rename to airports dataset
+airports <- as.data.frame(airports_complete[!is.na(airports_complete$REGION),])
+
+#combine airlines with flights dataset & rename new column
+flights <- left_join(flights, airlines, by = c("AIRLINE" = "IATA_CODE"))
+colnames(flights)[which(colnames(flights) == "AIRLINE.y")] <- "AIRLINE_FULL"
+
+################ SIDENOTE
+#Jin uses a separate dataset - flights_complete
+flights_complete <- flights %>%
+  left_join(airports_complete, by = c("ORIGIN_AIRPORT" = "IATA_CODE")) %>%
+  select(YEAR, MONTH, DAY, AIRLINE, AIRLINE_FULL, DEPARTURE_DELAY, DISTANCE, ARRIVAL_DELAY, 
+         DIVERTED, CANCELLED, WEATHER_DELAY, DESTINATION_AIRPORT, STATE, 
+         LATITUDE, LONGITUDE) %>%
+  rename(replace = c("LATITUDE" = "O_LAT", "LONGITUDE" = "O_LON", "STATE" = "O_STATE")) %>% 
+  left_join(airports_complete, by = c("DESTINATION_AIRPORT" = "IATA_CODE")) %>%
+  select(YEAR, MONTH, DAY, AIRLINE, AIRLINE_FULL, DEPARTURE_DELAY, DISTANCE, ARRIVAL_DELAY, 
+         DIVERTED, CANCELLED, WEATHER_DELAY, O_LAT, O_LON, O_STATE, STATE, 
+         LATITUDE, LONGITUDE) %>%
+  rename(replace = c("LATITUDE" = "D_LAT", "LONGITUDE" = "D_LON", "STATE" = "D_STATE"))
+
+flights_complete <- flights_complete %>% 
+  mutate(DATE = as.Date(with(flights_complete, 
+                             paste(YEAR, MONTH, DAY, sep = "-")),
+                        format = "%Y-%m-%d"))
+#done with editing Jin's code in for this part
+#################### SIDENOTE OVER
+
+#combine airports with flights dataset
+#do this for origin/departure airport, then rename
+flights <- left_join(flights, airports, by = c("ORIGIN_AIRPORT" = "IATA_CODE"))
+flights <- setnames(flights, old = c("AIRPORT", "CITY", "STATE", "COUNTRY", "LATITUDE", "LONGITUDE", "REGION"), new = c("ORIGIN_AIRPORT_FULL", "ORIGIN_CITY", "ORIGIN_STATE", "ORIGIN_COUNTRY", "ORIGIN_LATITUDE", "ORIGIN_LONGITUDE", "ORIGIN_REGION"))
+#then do this for arrival/destination airport & rename
+flights <- left_join(flights, airports, by = c("DESTINATION_AIRPORT" = "IATA_CODE"))
+flights <- setnames(flights, old = c("AIRPORT", "CITY", "STATE", "COUNTRY", "LATITUDE", "LONGITUDE", "REGION"), new = c("DEST_AIRPORT_FULL", "DEST_CITY", "DEST_STATE", "DEST_COUNTRY", "DEST_LATITUDE", "DEST_LONGITUDE", "DEST_REGION"))
+
+#remove international
+flights <- flights[!(is.na(flights$ORIGIN_REGION)),]
+flights <- flights[!(is.na(flights$DEST_REGION)),]
+
+#add column for month names
+flights$MONTH_FULL <- month.name[flights$MONTH]
+
+######################## SIDENOTE 
+#add in Jin's code again
+
+us_data <- map_data("state")
+
+dep_by_state <- flights_complete %>% 
+  group_by(O_STATE) %>%
+  dplyr::summarize(COUNT = n())
+
+arr_by_state <- flights_complete %>%
+  group_by(D_STATE) %>%
+  dplyr::summarize(COUNT = n())
+dep_by_state <- dep_by_state %>% 
+  mutate(O_STATE_NAME = tolower(state.name[match(O_STATE, state.abb)]))
+arr_by_state <- arr_by_state %>% 
+  mutate(D_STATE_NAME = tolower(state.name[match(D_STATE, state.abb)]))
+us_data_dep <- us_data %>%
+  left_join(dep_by_state, 
+            by = c("region" = "O_STATE_NAME"))
+us_data_arr <- us_data %>%
+  left_join(arr_by_state, 
+            by = c("region" = "D_STATE_NAME"))
+
+dep_delay_ts <- flights_complete %>% 
+  group_by(DATE, AIRLINE_FULL) %>% 
+  filter(DEPARTURE_DELAY > 0) %>%
+  dplyr::summarize(NumberofDelays = n(),
+                   AverageDelayTime = mean(DEPARTURE_DELAY, 
+                                           na.rm = TRUE)
+  )
+arr_delay_ts <- flights_complete %>% 
+  group_by(DATE, AIRLINE_FULL) %>% 
+  filter(ARRIVAL_DELAY > 0) %>%
+  dplyr::summarize(NumberofDelays = n(),
+                   AverageDelayTime = mean(ARRIVAL_DELAY, 
+                                           na.rm = TRUE)
+  )
+
+weighted_moving_average <- function(tt, time_series, ww, weights = NULL) {
+  if (ww > length(time_series))  
+    stop("Window width is greater than length of time series")
+  
+  if (is.null(weights))  weights <- rep(1/ww, ww)
+  
+  if (length(weights) != ww)  
+    stop("Weights should have the same length as the window width")
+  
+  if (tt < ww)  return(NA)
+  
+  weights <- weights / sum(weights)
+  return(sum(time_series[(tt-ww+1):tt] * weights, 
+             na.rm = TRUE))
+}
+
+get_weighted_moving_averages <- function(time_series, ww, weights) {
+  if (ww > length(time_series))  stop("Window width is greater than length of time series")
+  
+  if (is.null(weights))  weights <- rep(1/ww, ww)
+  
+  if (length(weights) != ww)  
+    stop("Weights should have the same length as the window width")
+  
+  weights <- weights / sum(weights)
+  return(sapply(1:length(time_series), 
+                weighted_moving_average, 
+                time_series = time_series, ww = ww, 
+                weights = weights))
+}
+
+# Code for Number of Departures/Arrivals Choropleth
+us_data_dep_by_region <- us_data_dep %>%
+  group_by(region) %>%  dplyr::summarize(O_STATE = unique(O_STATE),
+                                         COUNT = unique(COUNT)) %>%
+  mutate(PERCENT = COUNT/sum(COUNT, na.rm = TRUE)*100)
+us_data_arr_by_region <- us_data_arr %>%
+  group_by(region) %>%  dplyr::summarize(D_STATE = unique(D_STATE),
+                                         COUNT = unique(COUNT)) %>%
+  mutate(PERCENT = COUNT/sum(COUNT, na.rm = TRUE)*100)
+flights_complete <- flights_complete %>% 
+  mutate(SEASON = ifelse(MONTH %in% c(3, 4, 5), "Spring", ifelse(MONTH %in% c(6, 7, 8), "Summer", ifelse(MONTH %in% c(9, 10, 11), "Fall", "Winter"))))
+dep_by_state_season <- flights_complete %>% 
+  group_by(O_STATE, SEASON) %>%
+  dplyr::summarize(COUNT = n())
+arr_by_state_season <- flights_complete %>%
+  group_by(D_STATE, SEASON) %>%
+  dplyr::summarize(COUNT = n())
+dep_by_state_season <- dep_by_state_season %>% 
+  mutate(O_STATE_NAME = tolower(state.name[match(O_STATE, state.abb)]))
+arr_by_state_season <- arr_by_state_season %>% 
+  mutate(D_STATE_NAME = tolower(state.name[match(D_STATE, state.abb)]))
+
+get_grpPoly <- function(group, ID, df) {
+  Polygon(coordinates(df[which(df$region==ID & df$group==group), c("long", "lat")]),
+          hole = FALSE)
+}
+get_spPoly <- function(ID, df) {
+  Polygons(lapply(unique(df[df$region==ID,]$group), get_grpPoly, ID, df), ID)
+}
+############################ SIDENOTE OVER
+
+############################ SIDENOTE: ADD KEVIN'S CODE
+state_borders <- ggplot2::map_data("state")
+
+state_data <- data_frame(state.abb, state.name = tolower(state.name))
+new_data <- flights %>% 
+  group_by(ORIGIN_STATE, AIRLINE_FULL) %>% dplyr::summarize(Count = n(), 
+                                                            delay = mean(DEPARTURE_DELAY, 
+                                                                         na.rm = TRUE))
+new_data <- left_join(new_data, state_data, by = c("ORIGIN_STATE" = "state.abb"))
+state_borders <- left_join(state_borders, new_data, by = c("region" = "state.name"))
+state_borders <- state_borders[!is.na(state_borders$AIRLINE_FULL),]
+
+#NIKITA: add code for 4th plot
+#create new df getting average delay by airline, day of week, region
+flights_day_region_airline <- flights %>% 
+  group_by(AIRLINE_FULL, DAY_OF_WEEK, ORIGIN_REGION) %>% 
+  dplyr::summarize(Count = n(), DELAY = mean(DEPARTURE_DELAY, na.rm = TRUE))
+#change number to factor
+flights_day_region_airline$DAY_OF_WEEK <- as.factor(flights_day_region_airline$DAY_OF_WEEK)
+week_day_match <- cbind(c(1, 2, 3, 4, 5, 6, 7), 
+                        c("Monday", "Tuesday", "Wednesday", "Thursday", 
+                          "Friday", "Saturday", "Sunday"))
+#match week day number to week day name
+flights_day_region_airline$DAY_OF_WEEK_FULL <- 
+  week_day_match[flights_day_region_airline$DAY_OF_WEEK, 2]
+
+############NIKITA NIKITA NIKITA NIKITA OVER #################
+
+
+################ HANNAH HANNAH HANNAH
 #remove small airports
 flights$ORIGIN_AIRPORT <- as.character(flights$ORIGIN_AIRPORT)
 flights$DESTINATION_AIRPORT <- as.character(flights$DESTINATION_AIRPORT)
