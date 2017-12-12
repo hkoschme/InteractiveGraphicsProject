@@ -1,6 +1,7 @@
 #load libraries
 library(shiny)
 library(shinydashboard)
+library(devtools)
 library(leaflet)
 library(plotly)
 library(tidyverse)
@@ -8,8 +9,6 @@ library(forcats)
 library(reshape2)
 library(sp)
 library(datasets)
-library(ggmap)
-library(maps)
 library(plyr)
 library(dplyr)
 library(DT)
@@ -18,7 +17,9 @@ library(htmltools)
 library(geosphere)
 library(rgeos)
 library(scales)
-
+library(ggplot2)
+library(ggmap)
+library(maps)
 #load data
 flights <- fread("flights.csv")
 airports <- read.csv("airports.csv")
@@ -31,6 +32,12 @@ nikitagu_315_theme <-  theme_bw() +
                             color = "royalblue4"))
 
 ##############adjustments to data
+
+#converting to characters from factors
+# flights$ORIGIN_AIRPORT <- as.character(flights$ORIGIN_AIRPORT)
+# flights$DESTINATION_AIRPORT <- as.character(flights$DESTINATION_AIRPORT)
+# airlines$IATA_CODE <- as.character(airlines$IATA_CODE)
+
 
 ################# NIKITA NIKITA NIKITA
 #add binary variable containing whether there was a delay
@@ -63,6 +70,7 @@ airports_complete <- rbind(airports, airport_usdot_US)
 airports_complete$REGION <- state.region[match(airports_complete$STATE,state.abb)]
 #remove datasets with missing regions (Puerto Rico) and rename to airports dataset
 airports <- as.data.frame(airports_complete[!is.na(airports_complete$REGION),])
+
 
 #combine airlines with flights dataset & rename new column
 flights <- left_join(flights, airlines, by = c("AIRLINE" = "IATA_CODE"))
@@ -103,6 +111,11 @@ flights <- flights[!(is.na(flights$DEST_REGION)),]
 
 #add column for month names
 flights$MONTH_FULL <- month.name[flights$MONTH]
+#flights percent delay
+flights_percent_delay <- flights %>% 
+  select(AIRLINE_FULL, MONTH, MONTH_FULL, arr_delay_var, dept_delay_var) %>%
+  group_by(AIRLINE_FULL, MONTH_FULL, MONTH) %>%
+  dplyr::summarize(COUNT = n(), ARR_DELAY = sum(arr_delay_var), DEPT_DELAY = sum(dept_delay_var))
 
 ######################## SIDENOTE 
 #add in Jin's code again
@@ -235,8 +248,7 @@ flights_day_region_airline$DAY_OF_WEEK_FULL <-
 
 ################ HANNAH HANNAH HANNAH
 #remove small airports
-flights$ORIGIN_AIRPORT <- as.character(flights$ORIGIN_AIRPORT)
-flights$DESTINATION_AIRPORT <- as.character(flights$DESTINATION_AIRPORT)
+
 big_flights <- flights[grep("[[:digit:]]+",flights$ORIGIN_AIRPORT, invert=TRUE), ]
 
 #add binary variable containing whether there was a delay
@@ -334,20 +346,23 @@ names(pittsburgh_flights_destination) <- c("DAY_OF_WEEK","AIRLINE","ORIGIN_AIRPO
                                       "DESTINATION_AIRPORT", "o_CITY","o_LATITUDE", 
                                       "o_LONGITUDE", "o_AIRPORT", "d_CITY","d_LATITUDE",
                                       "d_LONGITUDE", "d_AIRPORT")
-destination_arc <- list()
-for(i in 1:nrow(pittsburgh_flights_destination)){
-  arc <- gcIntermediate( c(pittsburgh_flights_destination[i, "o_LONGITUDE"], pittsburgh_flights_destination[i, "o_LATITUDE"]), 
-                                     c(pittsburgh_flights_destination[i, "d_LONGITUDE"], pittsburgh_flights_destination[i, "d_LATITUDE"]), 
-                                     n=1000, addStartEnd=TRUE, sp =TRUE )
-  destination_arc[[i]] <- arc
-}
 
-origin_arc <- list()
-for(i in 1:nrow(pittsburgh_flights_origin)){
-  arc <- gcIntermediate( c(pittsburgh_flights_origin[i, "o_LONGITUDE"], pittsburgh_flights_origin[i, "o_LATITUDE"]), 
-                         c(pittsburgh_flights_origin[i, "d_LONGITUDE"], pittsburgh_flights_origin[i, "d_LATITUDE"]), 
-                         n=1000, addStartEnd=TRUE, sp =TRUE )
-  origin_arc[[i]] <- arc
 
-}
+
+# destination_arc <- list()
+# for(i in 1:nrow(pittsburgh_flights_destination)){
+#   arc <- gcIntermediate( c(pittsburgh_flights_destination[i, "o_LONGITUDE"], pittsburgh_flights_destination[i, "o_LATITUDE"]), 
+#                                      c(pittsburgh_flights_destination[i, "d_LONGITUDE"], pittsburgh_flights_destination[i, "d_LATITUDE"]), 
+#                                      n=1000, addStartEnd=TRUE, sp =TRUE )
+#   destination_arc[[i]] <- arc
+# }
+# 
+# origin_arc <- list()
+# for(i in 1:nrow(pittsburgh_flights_origin)){
+#   arc <- gcIntermediate( c(pittsburgh_flights_origin[i, "o_LONGITUDE"], pittsburgh_flights_origin[i, "o_LATITUDE"]), 
+#                          c(pittsburgh_flights_origin[i, "d_LONGITUDE"], pittsburgh_flights_origin[i, "d_LATITUDE"]), 
+#                          n=1000, addStartEnd=TRUE, sp =TRUE )
+#   origin_arc[[i]] <- arc
+# 
+# }
 
