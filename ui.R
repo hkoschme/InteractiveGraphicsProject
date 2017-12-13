@@ -1,6 +1,6 @@
-dashboardPage(
+dashboardPage(skin = "black",
   #create dashboard page 2
-  dashboardHeader(title = "Group 14"),
+  dashboardHeader(title = "Group 14: We Speak for Planes"),
   dashboardSidebar(width = "300px",
                    #design sidebar
                    sidebarMenu(
@@ -18,11 +18,20 @@ dashboardPage(
                               icon = icon("th")),
                      menuItem("Which States Have Higher Departure Delays?", tabName = "main_plot3", 
                               icon = icon("th")),
-                     menuItem("Plot 4", tabName = "main_plot4", 
+                     menuItem("Compare Average Delays by Region & Airline", tabName = "main_plot4", 
                               icon = icon("th"))
                    )
   ),
   dashboardBody( #organize body
+    #first change font etc
+    tags$head(tags$style(HTML('
+      .main-header .logo {
+                              font-family: "Georgia", Times, "Times New Roman", serif;
+                              font-weight: bold;
+                              font-size: 24px;
+                              }
+                              '))),
+    #draw plots/tabs
     tabItems(
       tabItem(tabName = "leaflet1", #if leaflet1 tab, then display 1st graph
               fluidRow(
@@ -30,16 +39,23 @@ dashboardPage(
                   leafletOutput(outputId = "leaflet1"), width = 12
                 ),
                 checkboxInput(inputId = "leaflet1_percents", 
-"Flights Delayed as Percent of
-All Flights At That Airport", value = FALSE, width = NULL)
+                              "Flights Delayed as Percent of
+                              All Flights At That Airport", value = FALSE, width = NULL)
                 )
               ),
       tabItem(tabName = "leaflet2", #if leaflet2 tab, then display 2nd graph
               fluidRow(
                 box(leafletOutput(outputId = "leaflet2"), width = 12),
-                checkboxInput(inputId = "leaflet2_destination", 
-                              "Flights with Pittsburgh Destination",
-                              value = FALSE, width = NULL)
+                selectInput(inputId = "leaflet2_origin", 
+                            choices = c("ATL - Hartsfield-Jackson Atlanta International Airport",
+                                        "DEN - Denver International Airport",
+                                        "EWR - Newark Liberty International Airport",
+                                        "LAX - Los Angeles International Airport",
+                                        "ORD - Chicago O'Hare International Airport",
+                                        "PIT - Pittsburgh International Airport"),
+                            selected = "PIT - Pittsburgh International Airport",
+                            label = paste("Flights with ","Origin/Destination")
+                )
               )
       ),
       ############################# NIKITA NIKITA NIKITA NIKITA###################
@@ -76,7 +92,7 @@ All Flights At That Airport", value = FALSE, width = NULL)
       tabItem(tabName = "main_plot2", #if main_plot2 then display 4th graph
               fluidRow(
                 box(
-                  plotOutput(outputId = "main_plot2"), width = 12,
+                  plotlyOutput(outputId = "main_plot2"), width = 12,
                   selectInput(inputId = "subset_data_2", label = "Airline", 
                               choices = c("American Airlines Inc.", 
                                           "American Eagle Airlines Inc.", 
@@ -145,7 +161,7 @@ All Flights At That Airport", value = FALSE, width = NULL)
       tabItem(tabName = "main_plot4", #if main_plot4 then display 6th graph
               fluidRow(
                 box(
-                  plotOutput(outputId = "main_plot4"), width = 12,
+                  plotOutput(outputId = "main_plot4"), width = 6,
                   selectInput(inputId = "subset_data_4", label = "Airline", 
                               choices = c("All", 
                                           "American Airlines Inc.", 
@@ -162,8 +178,35 @@ All Flights At That Airport", value = FALSE, width = NULL)
                                           "United Air Lines Inc.",
                                           "US Airways Inc.",
                                           "Virgin America"), 
-                              selected = "All")
-                )
+                              selected = "All"),
+                  selectInput(inputId = "dept_arr_plot4",
+                              label = "Departure or Arrival",
+                              choices = c("Departure", "Arrival"),
+                              selected = "Departure")),
+                  box(
+                    plotOutput(outputId = "main_plot4b"), width = 6,
+                    selectInput(inputId = "subset_data_4b", label = "Airline", 
+                                choices = c("All", 
+                                            "American Airlines Inc.", 
+                                            "American Eagle Airlines Inc.", 
+                                            "Atlantic Southeast Airlines",
+                                            "Delta Air Lines Inc.", 
+                                            "Skywest Airlines Inc.", 
+                                            "Southwest Airlines Co.", 
+                                            "Alaska Airlines Inc.", 
+                                            "Frontier Airlines Inc.", 
+                                            "Hawaiian Airlines Inc.", 
+                                            "JetBlue Airways", 
+                                            "Spirit Air Lines", 
+                                            "United Air Lines Inc.",
+                                            "US Airways Inc.",
+                                            "Virgin America"), 
+                                selected = "All"),
+                    selectInput(inputId = "dept_arr_plot4b",
+                                label = "Departure or Arrival",
+                                choices = c("Departure", "Arrival"),
+                                selected = "Departure")
+                  )
               )
       ),
       #JIN's code

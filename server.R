@@ -1,31 +1,29 @@
 function(input, output){
   output$leaflet1 <- renderLeaflet({
     
-    # selected_data <- subset(airports, a)
-    
     m_leaflet <- leaflet() %>% addTiles()%>%
       setView(lng = -93.85, lat = 37.45, zoom = 4) %>%
       addProviderTiles("MapBox", 
                        options = providerTileOptions(
                          id = "mapbox.light",
-                         accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) # %>%
-      # addPopups(airports, lng = airports$LONGITUDE, lat = airports$LATITUDE, popup = htmlEscape("Potato"))
+                         accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) 
     
     if(input$leaflet1_percents){
       m_leaflet <- m_leaflet %>%
-        addCircles(airports, lng = airports$LONGITUDE, lat = airports$LATITUDE,
-                   radius = airports$percent_delays*50000)
+        addCircles(airports2, lng = airports2$LONGITUDE, lat = airports2$LATITUDE,
+                   radius = airports2$percent_delays*100000)
     } else {
-      textlist <- ddply(airports, .(AIRPORT), 
+      textlist <- ddply(airports2, .(AIRPORT), 
                         function(x){
                           values <- c(x$AA, x$AS, x$B6, x$DL, x$EV, 
                                       x$F9,x$HA, x$MQ, x$NK,x$OO,x$UA,
                                       x$US,x$VX)
                           for(i in 1:length(values)){
                             if(is.na(values[i])) values[i] = 0
-                            }
+                          }
                           values <- as.character(values)
-                          paste("United Air Lines Inc.", values[1], 
+                          paste(x$AIRPORT,
+                                "<br/>","United Air Lines Inc.", values[1], 
                                 "<br/>","American Airlines Inc.", values[2], 
                                 "<br/>", "US Airways Inc.", values[3], 
                                 "<br/>","Frontier Airlines Inc.", values[4],
@@ -39,15 +37,15 @@ function(input, output){
                                 "<br/>", "Hawaiian Airlines Inc.", values[12],
                                 "<br/>", "American Eagle Airlines Inc.", values[13],
                                 "<br/>", "Virgin America", values[14])
-                          }
-                        )
+                        }
+      )
       m_leaflet <- m_leaflet %>%
-        addCircles(airports, lng = airports$LONGITUDE, lat = airports$LATITUDE,
-                   radius = airports$count_dep_delays,
+        addCircles(airports2, lng = airports2$LONGITUDE, lat = airports2$LATITUDE,
+                   radius = airports2$count_dep_delays,
                    popup = textlist$V1)
-      }
+    }
     return(m_leaflet)
-    })
+  })
   
   
   output$leaflet2 <- renderLeaflet({
@@ -58,18 +56,29 @@ function(input, output){
                        options = providerTileOptions(
                          id = "mapbox.light",
                          accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN')))
-    # if(input$leaflet2_destination){
-    #   for(flight in 1:length(destination_arc)){
-    #     m_leaflet <- m_leaflet %>%
-    #       addPolylines(data = destination_arc[[flight]])
-    #   }
-    # 
-    # } else {
-  for(flight in 1:length(origin_arc)){
-    m_leaflet <- m_leaflet %>%
-      addPolylines(data = origin_arc[[flight]], weight = summary_pitt_origin[flight, "most_traveled"]/1000)
-      # }
-  }
+    if(input$leaflet2_origin == "ATL - Hartsfield-Jackson Atlanta International Airport"){
+      origin_arc <- origin_arc_ATL
+    }
+    if(input$leaflet2_origin == "DEN - Denver International Airport"){
+      origin_arc <- origin_arc_DEN
+    }
+    if(input$leaflet2_origin == "EWR - Newark Liberty International Airport"){
+      origin_arc <- origin_arc_EWR
+    }
+    if(input$leaflet2_origin == "LAX - Los Angeles International Airport"){
+      origin_arc <- origin_arc_LAX
+    }
+    if(input$leaflet2_origin == "ORD - Chicago O'Hare International Airport"){
+      origin_arc <- origin_arc_ORD
+    }
+    if(input$leaflet2_origin == "PIT - Pittsburgh International Airport"){
+      origin_arc <- origin_arc_PIT
+    }
+    
+    for(flight in 1:length(origin_arc)){
+      m_leaflet <- m_leaflet %>%
+        addPolylines(data = origin_arc[[flight]], weight = summary_pitt_origin[flight, "most_traveled"]/1000)
+    }
     return(m_leaflet)
   })
   ###################NIKITA NIKITA NIKITA NIKITA NIKITA##################
@@ -101,19 +110,20 @@ function(input, output){
   })
   #make graph showing number of flights by airline by weekday/end, interacting by month
   #note: change color scheme
-  output$main_plot2  <- renderPlot({
-    plot2 <- ggplot(data = subset(flights, 
+  output$main_plot2  <- renderPlotly({
+    plot2 <- ggplot(data = subset(flights_percent_delay, 
                                   AIRLINE_FULL %in% input$subset_data_2),
                     aes(x = reorder(MONTH_FULL, MONTH), 
-                        y = ..count.., group = AIRLINE_FULL,
+                        y = COUNT, group = AIRLINE_FULL,
                         color = AIRLINE_FULL)) + 
-      geom_line(stat = "count", size = 2) + nikitagu_315_theme + 
+      geom_line(size = 2) + nikitagu_315_theme + 
       labs(x = "Month", y = "Number of Flights", 
            title = "Number of Flights Over 2015", 
            color = "Airline") + 
       theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
       scale_colour_brewer()
-    return(plot2)
+    plot2_plotly <- ggplotly(plot2, tooltip = c("text", "y"))
+    return(plot2_plotly)
   })
   # KEVIN
   output$main_plot3  <- renderPlot({
@@ -178,25 +188,93 @@ function(input, output){
            fill = "Average \nDelay Time \n(minutes)") + nikitagu_315_theme
     return(plot3b)
   })
-  
   output$main_plot4 <- renderPlot({
-    if(input$subset_data_4 == "All") {
-      plot4 <- ggplot(data = flights_day_region_airline, 
-                      aes(x = DAY_OF_WEEK_FULL, fill = ORIGIN_REGION, y = DELAY)) + 
-        geom_bar(stat = "identity") + nikitagu_315_theme + 
-        labs(x = "Day of Week", y = "Average Time Delayed (in minutes)", 
-             fill = "Region", 
-             title = "Average Flight Delays by Region by Day of Week in 2015")
+    if(input$dept_arr_plot4 == "Departure") {
+      if(input$subset_data_4 == "All") {
+        plot4 <- ggplot(data = subset(flights_by_region_orig),
+                        aes(x = Day_of_week, y = DEPT_DELAY)) + 
+          geom_bar(stat = "identity", fill = "royalblue2") + facet_wrap(~ ORIGIN_REGION) +
+          labs(title = "Average Departure Delay by Day and Region",
+               x = "Day of Week", 
+               y = "Average Delay (Minutes)") + nikitagu_315_theme + 
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      } else {
+        plot4 <- ggplot(data = subset(flights_by_region_orig, 
+                                      AIRLINE_FULL == input$subset_data_4),
+                        aes(x = Day_of_week, y = DEPT_DELAY)) + 
+          geom_bar(stat = "identity", fill = "royalblue2") + facet_wrap(~ ORIGIN_REGION) +
+          labs(title = "Average Departure Delay by Day and Region",
+               x = "Day of Week", 
+               y = "Average Delay (Minutes)") + nikitagu_315_theme +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      }
     } else {
-      plot4 <- ggplot(data = subset(flights_day_region_airline, 
-                                    AIRLINE_FULL == input$subset_data_4), 
-                      aes(x = DAY_OF_WEEK_FULL, fill = ORIGIN_REGION, y = DELAY)) + 
-        geom_bar(stat = "identity") + nikitagu_315_theme + 
-        labs(x = "Day of Week", y = "Average Time Delayed (in minutes)", 
-             fill = "Region", 
-             title = "Average Flight Delays by Region by Day of Week in 2015")
+      if(input$subset_data_4 == "All") {
+        plot4 <- ggplot(data = subset(flights_by_region_dest),
+                        aes(x = Day_of_week, y = ARR_DELAY)) + 
+          geom_bar(stat = "identity", fill = "royalblue2") + facet_wrap(~ DEST_REGION) +
+          labs(title = "Average Arrival Delay by Day and Region",
+               x = "Day of Week", 
+               y = "Average Delay (Minutes)") + nikitagu_315_theme + 
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      } else {
+        plot4 <- ggplot(data = subset(flights_by_region_dest, 
+                                      AIRLINE_FULL == input$subset_data_4),
+                        aes(x = Day_of_week, y = ARR_DELAY)) + 
+          geom_bar(stat = "identity", fill = "royalblue2") + facet_wrap(~ DEST_REGION) +
+          labs(title = "Average Arrival Delay by Day and Region",
+               x = "Day of Week", 
+               y = "Average Delay (Minutes)", 
+               fill = "Average Delay in Minutes"
+          ) + nikitagu_315_theme +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      }
     }
     return(plot4)
+  })
+  output$main_plot4b <- renderPlot({
+    if(input$dept_arr_plot4b == "Departure") {
+      if(input$subset_data_4b == "All") {
+        plot4b <- ggplot(data = subset(flights_by_region_orig),
+                        aes(x = Day_of_week, y = DEPT_DELAY)) + 
+          geom_bar(stat = "identity", fill = "royalblue2") + facet_wrap(~ ORIGIN_REGION) +
+          labs(title = "Average Departure Delay by Day and Region",
+               x = "Day of Week", 
+               y = "Average Delay (Minutes)") + nikitagu_315_theme + 
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      } else {
+        plot4b <- ggplot(data = subset(flights_by_region_orig, 
+                                      AIRLINE_FULL == input$subset_data_4b),
+                        aes(x = Day_of_week, y = DEPT_DELAY)) + 
+          geom_bar(stat = "identity", fill = "royalblue2") + facet_wrap(~ ORIGIN_REGION) +
+          labs(title = "Average Departure Delay by Day and Region",
+               x = "Day of Week", 
+               y = "Average Delay (Minutes)") + nikitagu_315_theme +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      }
+    } else {
+      if(input$subset_data_4b == "All") {
+        plot4b <- ggplot(data = subset(flights_by_region_dest),
+                        aes(x = Day_of_week, y = ARR_DELAY)) + 
+          geom_bar(stat = "identity", fill = "royalblue2") + facet_wrap(~ DEST_REGION) +
+          labs(title = "Average Arrival Delay by Day and Region",
+               x = "Day of Week", 
+               y = "Average Delay (Minutes)") + nikitagu_315_theme + 
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      } else {
+        plot4b <- ggplot(data = subset(flights_by_region_dest, 
+                                      AIRLINE_FULL == input$subset_data_4b),
+                        aes(x = Day_of_week, y = ARR_DELAY)) + 
+          geom_bar(stat = "identity", fill = "royalblue2") + facet_wrap(~ DEST_REGION) +
+          labs(title = "Average Arrival Delay by Day and Region",
+               x = "Day of Week", 
+               y = "Average Delay (Minutes)", 
+               fill = "Average Delay in Minutes"
+          ) + nikitagu_315_theme +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+      }
+    }
+    return(plot4b)
   })
   #jin code
   output$plotly_ts <- renderPlotly({
