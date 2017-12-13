@@ -88,6 +88,34 @@ airport_vs_airline_delays <- as.data.frame(airport_vs_airline_delays)
 airport_vs_airline_delays$names <- row.names(airport_vs_airline_delays)
 airports <- left_join(airports, airport_vs_airline_delays, by = c("IATA_CODE" = "names"))
 
+textlist <- ddply(airports, .(AIRPORT), 
+                  function(x){
+                    values <- c(x$AA, x$AS, x$B6, x$DL, x$EV, 
+                                x$F9,x$HA, x$MQ, x$NK,x$OO,x$UA,
+                                x$US,x$VX)
+                    for(i in 1:length(values)){
+                      if(is.na(values[i])) values[i] = 0
+                    }
+                    values <- as.character(values)
+                    paste(x$AIRPORT,
+                          "<br/>","United Air Lines Inc.", values[1], 
+                          "<br/>","American Airlines Inc.", values[2], 
+                          "<br/>", "US Airways Inc.", values[3], 
+                          "<br/>","Frontier Airlines Inc.", values[4],
+                          "<br/>","JetBlue Airways", values[5], 
+                          "<br/>","Skywest Airlines Inc.", values[6],
+                          "<br/>","Alaska Airlines Inc.", values[7], 
+                          "<br/>", "Spirit Air Lines", values[8], 
+                          "<br/>", "Southwest Airlines Co." , values[9], 
+                          "<br/>","Delta Air Lines Inc.", values[10], 
+                          "<br/>","Atlantic Southeast Airlines", values[11], 
+                          "<br/>", "Hawaiian Airlines Inc.", values[12],
+                          "<br/>", "American Eagle Airlines Inc.", values[13])
+                  }
+)
+
+airports <- left_join(airports, textlist, by = c("AIRPORT" = "AIRPORT"))
+
 
 saveRDS(airports, file = "airports.rds")
 
@@ -197,6 +225,7 @@ for(i in 1:nrow(summary_pitt_origin)){
   origin_arc_PIT[[i]] <- arc
 }
 
+saveRDS(summary_pitt_origin, "summary_pit_origin.rds")
 ###############################################################################ATL
 #pittsburgh flights data frames for departures and arrivals
 pittsburgh_flights_origin <- flights[flights$ORIGIN_AIRPORT == 
@@ -252,7 +281,7 @@ for(i in 1:nrow(summary_pitt_origin)){
                          n=1000, addStartEnd=TRUE, sp =TRUE )
   origin_arc_ATL[[i]] <- arc
 }
-
+saveRDS(summary_pitt_origin, "summary_atl_origin.rds")
 ###############################################################################LAX
 #pittsburgh flights data frames for departures and arrivals
 pittsburgh_flights_origin <- flights[flights$ORIGIN_AIRPORT == 
@@ -308,6 +337,7 @@ for(i in 1:nrow(summary_pitt_origin)){
   origin_arc_LAX[[i]] <- arc
 }
 
+saveRDS(summary_pitt_origin, "summary_lax_origin.rds")
 
 ###############################################################################ORD
 #pittsburgh flights data frames for departures and arrivals
@@ -364,6 +394,7 @@ for(i in 1:nrow(summary_pitt_origin)){
   origin_arc_ORD[[i]] <- arc
 }
 
+saveRDS(summary_pitt_origin, "summary_ord_origin.rds")
 ###############################################################################EWR
 #pittsburgh flights data frames for departures and arrivals
 pittsburgh_flights_origin <- flights[flights$ORIGIN_AIRPORT == 
@@ -419,7 +450,7 @@ for(i in 1:nrow(summary_pitt_origin)){
   origin_arc_EWR[[i]] <- arc
 }
 
-
+saveRDS(summary_pitt_origin, "summary_ewr_origin.rds")
 ###############################################################################DEN
 #pittsburgh flights data frames for departures and arrivals
 pittsburgh_flights_origin <- flights[flights$ORIGIN_AIRPORT == 
@@ -474,7 +505,7 @@ for(i in 1:nrow(summary_pitt_origin)){
                          n=1000, addStartEnd=TRUE, sp =TRUE )
   origin_arc_DEN[[i]] <- arc
 }
-
+saveRDS(summary_pitt_origin, "summary_den_origin.rds")
 
 
 saveRDS(origin_arc_DEN, "origin_arc_DEN.rds")

@@ -23,8 +23,8 @@ library(rsconnect)
 
 dashboardPage(skin = "black",
   #create dashboard page 2
-  dashboardHeader(title = "Group 14: We Speak for Planes"),
-  dashboardSidebar(width = "300px",
+  dashboardHeader(title = "Group 14: We Speak for Planes", titleWidth = 415),
+  dashboardSidebar(width = "320px",
                    #design sidebar
                    sidebarMenu(
                      menuItem("Which States Have the Most Flights?", tabName = "choropleth", 
@@ -35,7 +35,7 @@ dashboardPage(skin = "black",
                               icon = icon("th")),
                      menuItem("How do Delays Change Over the Year?", tabName = "ts", 
                               icon = icon("th")),
-                     menuItem("Which Airports Have the Most Delays", tabName = "leaflet1", 
+                     menuItem("Which Airports Have the Most Delays?", tabName = "leaflet1", 
                               icon = icon("th")),
                      menuItem("Which Routes are the Most Popular?", tabName = "leaflet2", 
                               icon = icon("th")),
@@ -59,17 +59,18 @@ dashboardPage(skin = "black",
       tabItem(tabName = "leaflet1", #if leaflet1 tab, then display 1st graph
               fluidRow(
                 box(
-                  leafletOutput(outputId = "leaflet1"), width = 12
-                ),
-                checkboxInput(inputId = "leaflet1_percents", 
-                              "Flights Delayed as Percent of
-                              All Flights At That Airport", value = FALSE, width = NULL)
+                  leafletOutput(outputId = "leaflet1"), width = 12),
+                box(
+                  selectInput(inputId = "leaflet1_percents", label ="Airport Dot Size", choices =  c("Percent of
+                              All Flights At That Airport", "Number of Flights Delayed"),
+                              selected = "Number of Flights Delayed")
+                )
                 )
               ),
       tabItem(tabName = "leaflet2", #if leaflet2 tab, then display 2nd graph
               fluidRow(
                 box(leafletOutput(outputId = "leaflet2"), width = 12),
-                selectInput(inputId = "leaflet2_origin", 
+                box(selectInput(inputId = "leaflet2_origin", 
                             choices = c("ATL - Hartsfield-Jackson Atlanta International Airport",
                                         "DEN - Denver International Airport",
                                         "EWR - Newark Liberty International Airport",
@@ -77,7 +78,8 @@ dashboardPage(skin = "black",
                                         "ORD - Chicago O'Hare International Airport",
                                         "PIT - Pittsburgh International Airport"),
                             selected = "PIT - Pittsburgh International Airport",
-                            label = paste("Flights with ","Origin/Destination")
+                            label = "Flights with Origin/Destination at:"
+                )
                 )
               )
       ),
@@ -236,6 +238,7 @@ dashboardPage(skin = "black",
       tabItem(tabName = "ts", #if ts then display 7th graph
               fluidRow(
                 box(width = 12,
+                    plotlyOutput(outputId = "plotly_ts", width = "100%"),
                     selectInput(inputId = "ts",
                                 label = "Which time series to plot?",
                                 choices = c("Number of Delays", "Average Delay Time"),
@@ -268,8 +271,7 @@ dashboardPage(skin = "black",
                                   value = TRUE),
                     checkboxInput(inputId = "add_arr_ma",
                                   label = "Add Arrival Moving Average",
-                                  value = FALSE),
-                    plotlyOutput(outputId = "plotly_ts", width = "100%")
+                                  value = FALSE)
                 )
               )
       ),

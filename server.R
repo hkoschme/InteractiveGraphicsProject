@@ -31,41 +31,17 @@ function(input, output){
                          id = "mapbox.light",
                          accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN'))) 
     
-    if(input$leaflet1_percents){
+    if(input$leaflet1_percents == "Percent of
+                              All Flights At That Airport"){
       m_leaflet <- m_leaflet %>%
         addCircles(airports2, lng = airports2$LONGITUDE, lat = airports2$LATITUDE,
                    radius = airports2$percent_delays*100000)
     } else {
-      textlist <- ddply(airports2, .(AIRPORT), 
-                        function(x){
-                          values <- c(x$AA, x$AS, x$B6, x$DL, x$EV, 
-                                      x$F9,x$HA, x$MQ, x$NK,x$OO,x$UA,
-                                      x$US,x$VX)
-                          for(i in 1:length(values)){
-                            if(is.na(values[i])) values[i] = 0
-                          }
-                          values <- as.character(values)
-                          paste(x$AIRPORT,
-                                "<br/>","United Air Lines Inc.", values[1], 
-                                "<br/>","American Airlines Inc.", values[2], 
-                                "<br/>", "US Airways Inc.", values[3], 
-                                "<br/>","Frontier Airlines Inc.", values[4],
-                                "<br/>","JetBlue Airways", values[5], 
-                                "<br/>","Skywest Airlines Inc.", values[6],
-                                "<br/>","Alaska Airlines Inc.", values[7], 
-                                "<br/>", "Spirit Air Lines", values[8], 
-                                "<br/>", "Southwest Airlines Co." , values[9], 
-                                "<br/>","Delta Air Lines Inc.", values[10], 
-                                "<br/>","Atlantic Southeast Airlines", values[11], 
-                                "<br/>", "Hawaiian Airlines Inc.", values[12],
-                                "<br/>", "American Eagle Airlines Inc.", values[13],
-                                "<br/>", "Virgin America", values[14])
-                        }
-      )
+      
       m_leaflet <- m_leaflet %>%
         addCircles(airports2, lng = airports2$LONGITUDE, lat = airports2$LATITUDE,
                    radius = airports2$count_dep_delays,
-                   popup = textlist$V1)
+                   popup = airports2$V1)
     }
     return(m_leaflet)
   })
@@ -81,21 +57,27 @@ function(input, output){
                          accessToken = Sys.getenv('MAPBOX_ACCESS_TOKEN')))
     if(input$leaflet2_origin == "ATL - Hartsfield-Jackson Atlanta International Airport"){
       origin_arc <- origin_arc_ATL
+      summary_pitt_origin <- summary_atl_origin
     }
     if(input$leaflet2_origin == "DEN - Denver International Airport"){
       origin_arc <- origin_arc_DEN
+      summary_pitt_origin <- summary_den_origin
     }
     if(input$leaflet2_origin == "EWR - Newark Liberty International Airport"){
       origin_arc <- origin_arc_EWR
+      summary_pitt_origin <- summary_ewr_origin
     }
     if(input$leaflet2_origin == "LAX - Los Angeles International Airport"){
       origin_arc <- origin_arc_LAX
+      summary_pitt_origin <- summary_lax_origin
     }
     if(input$leaflet2_origin == "ORD - Chicago O'Hare International Airport"){
       origin_arc <- origin_arc_ORD
+      summary_pitt_origin <- summary_ord_origin
     }
     if(input$leaflet2_origin == "PIT - Pittsburgh International Airport"){
       origin_arc <- origin_arc_PIT
+      summary_pitt_origin <- summary_pit_origin
     }
     
     for(flight in 1:length(origin_arc)){
@@ -313,20 +295,22 @@ function(input, output){
         dep_ma_28_avg <- dep_delay_ts_all$AverageDelayTime %>%
           get_weighted_moving_averages(ww = 28, 
                                        weights = c(rep(0.5, 21), 1, 1, 1, 1, 1, 3, 5))
-        dep_delay_ts_all <- dep_delay_ts_all %>% mutate(dep_ma_28_num = dep_ma_28_num,
+        dep_delay_ts_all <- dep_delay_ts_all %>% plyr::mutate(dep_ma_28_num = dep_ma_28_num,
                                                         dep_ma_28_avg = dep_ma_28_avg)
         return(dep_delay_ts_all)
-      }
-      dep_delay_ts_filtered <- dep_delay_ts %>% dplyr::filter(AIRLINE_FULL == input$AIRLINE_ts)
-      dep_ma_28_num <- dep_delay_ts_filtered$NumberofDelays %>%
-        get_weighted_moving_averages(ww = 28, 
+      } else {
+        dep_delay_ts$AIRLINE_FULL <- as.character(dep_delay_ts$AIRLINE_FULL)
+        dep_delay_ts_filtered <- dep_delay_ts %>% dplyr::filter(AIRLINE_FULL == input$AIRLINE_ts)%>% group_by(DATE)
+        dep_ma_28_num <- dep_delay_ts_filtered$NumberofDelays %>%
+          get_weighted_moving_averages(ww = 28, 
                                      weights = c(rep(0.5, 21), 1, 1, 1, 1, 1, 3, 5))
-      dep_ma_28_avg <- dep_delay_ts_filtered$AverageDelayTime %>%
-        get_weighted_moving_averages(ww = 28, 
+        dep_ma_28_avg <- dep_delay_ts_filtered$AverageDelayTime %>%
+          get_weighted_moving_averages(ww = 28, 
                                      weights = c(rep(0.5, 21), 1, 1, 1, 1, 1, 3, 5))
-      return(dep_delay_ts_filtered %>% mutate(dep_ma_28_num = dep_ma_28_num,
+      return(dep_delay_ts_filtered %>% plyr::mutate(dep_ma_28_num = dep_ma_28_num,
                                               dep_ma_28_avg = dep_ma_28_avg))
-    })
+      }
+      })
     ts_arr_react <- reactive({
       if(input$AIRLINE_ts == "All") {
         arr_delay_ts_all <- arr_delay_ts %>%
@@ -339,20 +323,24 @@ function(input, output){
         arr_ma_28_avg <- arr_delay_ts_all$AverageDelayTime %>%
           get_weighted_moving_averages(ww = 28, 
                                        weights = c(rep(0.5, 21), 1, 1, 1, 1, 1, 3, 5))
-        arr_delay_ts_all <- arr_delay_ts_all %>% mutate(arr_ma_28_num = arr_ma_28_num,
+        arr_delay_ts_all <- arr_delay_ts_all %>% plyr::mutate(arr_ma_28_num = arr_ma_28_num,
                                                         arr_ma_28_avg = arr_ma_28_avg)
         return(arr_delay_ts_all)
-      }
-      arr_delay_ts_filtered <- arr_delay_ts %>% dplyr::filter(AIRLINE_FULL == input$AIRLINE_ts)
-      arr_ma_28_num <- arr_delay_ts_filtered$NumberofDelays %>%
-        get_weighted_moving_averages(ww = 28, 
-                                     weights = c(rep(0.5, 21), 1, 1, 1, 1, 1, 3, 5))
-      arr_ma_28_avg <- arr_delay_ts_filtered$AverageDelayTime %>%
-        get_weighted_moving_averages(ww = 28, 
-                                     weights = c(rep(0.5, 21), 1, 1, 1, 1, 1, 3, 5))
-      return(arr_delay_ts_filtered %>% mutate(arr_ma_28_num = arr_ma_28_num,
+      } else {
+        arr_delay_ts$AIRLINE_FULL <- as.character(arr_delay_ts$AIRLINE_FULL)
+        arr_delay_ts_filtered <- arr_delay_ts %>% 
+          group_by(DATE) %>%
+          dplyr::filter(AIRLINE_FULL == input$AIRLINE_ts)
+        arr_ma_28_num <- arr_delay_ts_filtered$NumberofDelays %>%
+          get_weighted_moving_averages(ww = 28, 
+                                       weights = c(rep(0.5, 21), 1, 1, 1, 1, 1, 3, 5))
+        arr_ma_28_avg <- arr_delay_ts_filtered$AverageDelayTime %>%
+          get_weighted_moving_averages(ww = 28,
+                                       weights = c(rep(0.5, 21), 1, 1, 1, 1, 1, 3, 5))
+        return(arr_delay_ts_filtered %>% plyr::mutate(arr_ma_28_num = arr_ma_28_num,
                                               arr_ma_28_avg = arr_ma_28_avg))
-    })
+      }
+      })
     plot <- ggplot() + scale_x_date() +
       labs(title = paste(input$ts, "Over Time", sep = " "),
            x = "Time",
@@ -422,11 +410,11 @@ function(input, output){
       us_data_dep_by_region_season <- us_data_dep_season %>%
         group_by(region) %>%  dplyr::summarize(O_STATE = unique(O_STATE),
                                                COUNT = unique(COUNT)) %>%
-        mutate(PERCENT = COUNT/sum(COUNT, na.rm = TRUE)*100)
+        plyr::mutate(PERCENT = COUNT/sum(COUNT, na.rm = TRUE)*100)
       us_data_arr_by_region_season <- us_data_arr_season %>%
         group_by(region) %>%  dplyr::summarize(D_STATE = unique(D_STATE),
                                                COUNT = unique(COUNT)) %>%
-        mutate(PERCENT = COUNT/sum(COUNT, na.rm = TRUE)*100)
+        plyr::mutate(PERCENT = COUNT/sum(COUNT, na.rm = TRUE)*100)
     }
     if(input$dep_or_arr == "Departure") {
       df_chosen <- us_data_dep_season
