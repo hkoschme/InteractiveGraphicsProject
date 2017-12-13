@@ -67,7 +67,7 @@ function(input, output){
     # } else {
   for(flight in 1:length(origin_arc)){
     m_leaflet <- m_leaflet %>%
-      addPolylines(data = origin_arc[[flight]], color = colorBin(summary_pitt_origin[flight, "most_traveled"]))
+      addPolylines(data = origin_arc[[flight]], weight = summary_pitt_origin[flight, "most_traveled"]/1000)
       # }
   }
     return(m_leaflet)
