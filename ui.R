@@ -1,26 +1,26 @@
 dashboardPage(
   #create dashboard page 2
   dashboardHeader(title = "Group 14"),
-  dashboardSidebar(
-    #design sidebar
-    sidebarMenu(
-      menuItem("Which States Have the Most Flights?", tabName = "choropleth", 
-               icon = icon("th")),
-      menuItem("Which Airlines Have the Most Flights?", tabName = "main_plot2", 
-               icon = icon("th")),
-      menuItem("Which Airlines Have the Most Delays?", tabName = "main_plot1", 
-               icon = icon("th")),
-      menuItem("Map 1", tabName = "leaflet1", 
-               icon = icon("th")),
-      menuItem("Map 2", tabName = "leaflet2", 
-               icon = icon("th")),
-      menuItem("Plot 3", tabName = "main_plot3", 
-               icon = icon("th")),
-      menuItem("Plot 4", tabName = "main_plot4", 
-               icon = icon("th")),
-      menuItem("Time Series", tabName = "ts", 
-               icon = icon("th"))
-    )
+  dashboardSidebar(width = "300px",
+                   #design sidebar
+                   sidebarMenu(
+                     menuItem("Which States Have the Most Flights?", tabName = "choropleth", 
+                              icon = icon("th")),
+                     menuItem("Which Airlines Have the Most Flights?", tabName = "main_plot2", 
+                              icon = icon("th")),
+                     menuItem("Which Airlines Have the Most Delays?", tabName = "main_plot1", 
+                              icon = icon("th")),
+                     menuItem("How do Delays Change Over the Year?", tabName = "ts", 
+                              icon = icon("th")),
+                     menuItem("", tabName = "leaflet1", 
+                              icon = icon("th")),
+                     menuItem("Map 2", tabName = "leaflet2", 
+                              icon = icon("th")),
+                     menuItem("Which States Have Higher Departure Delays?", tabName = "main_plot3", 
+                              icon = icon("th")),
+                     menuItem("Plot 4", tabName = "main_plot4", 
+                              icon = icon("th"))
+                   )
   ),
   dashboardBody( #organize body
     tabItems(
@@ -29,10 +29,11 @@ dashboardPage(
                 box(
                   leafletOutput(outputId = "leaflet1"), width = 12
                 ),
-                checkboxInput(inputId = "leaflet1_percents", "Flights Delayed as Percent of
-                      \nAll Flights At That Airport", value = FALSE, width = NULL)
-              )
-      ),
+                checkboxInput(inputId = "leaflet1_percents", 
+"Flights Delayed as Percent of
+All Flights At That Airport", value = FALSE, width = NULL)
+                )
+              ),
       tabItem(tabName = "leaflet2", #if leaflet2 tab, then display 2nd graph
               fluidRow(
                 box(leafletOutput(outputId = "leaflet2"), width = 12),
@@ -45,7 +46,7 @@ dashboardPage(
       tabItem(tabName = "main_plot1", #if main_plot1 then display 3rd graph
               fluidRow(
                 box(
-                  plotOutput(outputId = "main_plot1"), 
+                  plotOutput(outputId = "main_plot1"), width = 12,
                   selectInput(inputId = "subset_data_1", label = "Airline", 
                               choices = c("American Airlines Inc.", 
                                           "American Eagle Airlines Inc.", 
@@ -61,7 +62,10 @@ dashboardPage(
                                           "United Air Lines Inc.",
                                           "US Airways Inc.",
                                           "Virgin America"), 
-                              multiple = T, selected = "US Airways Inc."),
+                              multiple = T, selected = c("US Airways Inc.", 
+                                                         "Southwest Airlines Co.",
+                                                         "American Airlines Inc.",
+                                                         "United Air Lines Inc.")),
                   selectInput(inputId = "dept_arr_plot1",
                               label = "Departure or Arrival",
                               choices = c("Departure", "Arrival"),
@@ -72,7 +76,7 @@ dashboardPage(
       tabItem(tabName = "main_plot2", #if main_plot2 then display 4th graph
               fluidRow(
                 box(
-                  plotOutput(outputId = "main_plot2"), 
+                  plotOutput(outputId = "main_plot2"), width = 12,
                   selectInput(inputId = "subset_data_2", label = "Airline", 
                               choices = c("American Airlines Inc.", 
                                           "American Eagle Airlines Inc.", 
@@ -88,7 +92,10 @@ dashboardPage(
                                           "United Air Lines Inc.",
                                           "US Airways Inc.",
                                           "Virgin America"), 
-                              multiple = T, selected = "US Airways Inc.")
+                              multiple = T, selected = c("US Airways Inc.", 
+                                                         "Southwest Airlines Co.",
+                                                         "American Airlines Inc.",
+                                                         "United Air Lines Inc."))
                   
                 )
               )
@@ -96,7 +103,7 @@ dashboardPage(
       tabItem(tabName = "main_plot3", #if main_plot3 then display 5th graph
               fluidRow(
                 box(
-                  plotOutput(outputId = "main_plot3"), 
+                  plotOutput(outputId = "main_plot3"), width = 6,
                   selectInput(inputId = "subset_data_3", label = "Airline", 
                               choices = c("All", 
                                           "American Airlines Inc.", 
@@ -107,7 +114,25 @@ dashboardPage(
                                           "Southwest Airlines Co.", 
                                           "Alaska Airlines Inc.", 
                                           "Frontier Airlines Inc.", 
-                                          "Hawaiian Airlines Inc.", 
+                                          "JetBlue Airways", 
+                                          "Spirit Air Lines", 
+                                          "United Air Lines Inc.",
+                                          "US Airways Inc.",
+                                          "Virgin America"), 
+                              selected = "All")
+                ),
+                box(
+                  plotOutput(outputId = "main_plot3b"), width = 6,
+                  selectInput(inputId = "subset_data_3b", label = "Airline", 
+                              choices = c("All", 
+                                          "American Airlines Inc.", 
+                                          "American Eagle Airlines Inc.", 
+                                          "Atlantic Southeast Airlines",
+                                          "Delta Air Lines Inc.", 
+                                          "Skywest Airlines Inc.", 
+                                          "Southwest Airlines Co.", 
+                                          "Alaska Airlines Inc.", 
+                                          "Frontier Airlines Inc.", 
                                           "JetBlue Airways", 
                                           "Spirit Air Lines", 
                                           "United Air Lines Inc.",
@@ -120,7 +145,7 @@ dashboardPage(
       tabItem(tabName = "main_plot4", #if main_plot4 then display 6th graph
               fluidRow(
                 box(
-                  plotOutput(outputId = "main_plot4"), 
+                  plotOutput(outputId = "main_plot4"), width = 12,
                   selectInput(inputId = "subset_data_4", label = "Airline", 
                               choices = c("All", 
                                           "American Airlines Inc.", 
@@ -144,42 +169,41 @@ dashboardPage(
       #JIN's code
       tabItem(tabName = "ts", #if ts then display 7th graph
               fluidRow(
-                box(
-                  selectInput(inputId = "ts",
-                              label = "Which time series to plot?",
-                              choices = c("NumberofDelays", "AverageDelayTime"),
-                              selected = "NumberofDelays"),
-                  selectInput(inputId = "AIRLINE_ts",
-                              label = "Airline:",
-                              choices = c("All", 
-                                          "American Airlines Inc.", 
-                                          "American Eagle Airlines Inc.", 
-                                          "Atlantic Southeast Airlines",
-                                          "Delta Air Lines Inc.", 
-                                          "Skywest Airlines Inc.", 
-                                          "Southwest Airlines Co.", 
-                                          "Alaska Airlines Inc.", 
-                                          "Frontier Airlines Inc.", 
-                                          "Hawaiian Airlines Inc.", 
-                                          "JetBlue Airways", 
-                                          "Spirit Air Lines", 
-                                          "United Air Lines Inc.",
-                                          "US Airways Inc.",
-                                          "Virgin America"),
-                              selected = "All"),
-                  selectizeInput(inputId = "add_dep_arr",
-                                 label = "For departure or arrival?",
-                                 choices = c("Departure", "Arrival"),
-                                 multiple = TRUE,
-                                 options = list(placeholder = "Select departure and/or arrival")),
-                  checkboxInput(inputId = "add_dep_ma",
-                                label = "Add Departure Moving Average",
-                                value = TRUE),
-                  checkboxInput(inputId = "add_arr_ma",
-                                label = "Add Arrival Moving Average",
-                                value = FALSE),
-                  plotlyOutput(outputId = "plotly_ts", height = "450px",
-                               width = "800px")
+                box(width = 12,
+                    selectInput(inputId = "ts",
+                                label = "Which time series to plot?",
+                                choices = c("Number of Delays", "Average Delay Time"),
+                                selected = "Number of Delays"),
+                    selectInput(inputId = "AIRLINE_ts",
+                                label = "Airline:",
+                                choices = c("All", 
+                                            "American Airlines Inc.", 
+                                            "American Eagle Airlines Inc.", 
+                                            "Atlantic Southeast Airlines",
+                                            "Delta Air Lines Inc.", 
+                                            "Skywest Airlines Inc.", 
+                                            "Southwest Airlines Co.", 
+                                            "Alaska Airlines Inc.", 
+                                            "Frontier Airlines Inc.", 
+                                            "Hawaiian Airlines Inc.", 
+                                            "JetBlue Airways", 
+                                            "Spirit Air Lines", 
+                                            "United Air Lines Inc.",
+                                            "US Airways Inc.",
+                                            "Virgin America"),
+                                selected = "All"),
+                    selectizeInput(inputId = "add_dep_arr",
+                                   label = "For departure or arrival?",
+                                   choices = c("Departure", "Arrival"),
+                                   multiple = TRUE,
+                                   options = list(placeholder = "Select departure and/or arrival")),
+                    checkboxInput(inputId = "add_dep_ma",
+                                  label = "Add Departure Moving Average",
+                                  value = TRUE),
+                    checkboxInput(inputId = "add_arr_ma",
+                                  label = "Add Arrival Moving Average",
+                                  value = FALSE),
+                    plotlyOutput(outputId = "plotly_ts", width = "100%")
                 )
               )
       ),
@@ -200,7 +224,7 @@ dashboardPage(
                 )
               )
       )
-    )
-  )
-  ############################# NIKITA NIKITA NIKITA NIKITA###################
+      )
+)
+############################# NIKITA NIKITA NIKITA NIKITA###################
 )

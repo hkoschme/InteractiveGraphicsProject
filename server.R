@@ -65,16 +65,15 @@ function(input, output){
     #   }
     # 
     # } else {
-    #   for(flight in 1:length(origin_arc)){
-    #     m_leaflet <- m_leaflet %>% 
-    #       addPolylines(data = origin_arc[[flight]])
-    #   }
-    # }
+  for(flight in 1:length(origin_arc)){
+    m_leaflet <- m_leaflet %>%
+      addPolylines(data = origin_arc[[flight]], color = colorBin(summary_pitt_origin[flight, "most_traveled"]))
+      # }
+  }
     return(m_leaflet)
   })
-
-###################NIKITA NIKITA NIKITA NIKITA NIKITA##################
-#make graph showing proportion of flights delayed by airline, filtering by month
+  ###################NIKITA NIKITA NIKITA NIKITA NIKITA##################
+  #make graph showing proportion of flights delayed by airline, filtering by month
   output$main_plot1  <- renderPlot({
     if (input$dept_arr_plot1 == "Arrival"){
       plot1 <- ggplot(data = subset(flights_percent_delay, 
@@ -119,29 +118,67 @@ function(input, output){
   # KEVIN
   output$main_plot3  <- renderPlot({
     if(input$subset_data_3 == "All") {
-      plot3 <- ggplot(state_borders) +
-        geom_polygon(aes(x = long, y = lat, group = group, fill = delay), 
-                     color = "black") + coord_map("polyconic") + 
-        scale_fill_gradient(low = "plum1", high = "purple4", na.value = "black", 
-                            breaks = c(6, 10, 14), 
-                            labels = c("Low", "Medium", "High")) + 
-        labs(title = "Average Departure Delays By State in 2015",
-             x = "Longitude", y = "Latitude", 
-             fill = "Average \nDelay Time \n(minutes)")
+      state_border_subset <- state_borders
+      state_border_subset$delay_color <- cut(state_border_subset$delay, 
+                                             breaks = quantile(state_border_subset$delay, seq(0, 1, 0.2), na.rm = TRUE),
+                                             c(paste(round(quantile(state_border_subset$delay, 0, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.2, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.2, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.4, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.4, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.6, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.6, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.8, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.8, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 1, na.rm = TRUE), 2), sep = "")), include.lowest = TRUE)
     } else {
-      plot3 <- ggplot(subset(state_borders, AIRLINE_FULL == input$subset_data_3)) +
-        geom_polygon(aes(x = long, y = lat, group = group, fill = delay,
-                         midpoint = mean(delay)), 
-                     color = "black") + coord_map("polyconic") + 
-        scale_fill_gradient(low = "plum1", high = "purple4", na.value = "black", 
-                            breaks = c(6, 10, 14), 
-                            labels = c("Low", "Medium", "High")) +
-        labs(title = "Average Departure Delays By State in 2015",
-             x = "Longitude", y = "Latitude", 
-             fill = "Average \nDelay Time \n(minutes)")
+      state_border_subset <- state_borders_airline %>% dplyr::filter(as.character(AIRLINE_FULL) == input$subset_data_3)
+      state_border_subset$delay_color <- cut(state_border_subset$delay, 
+                                             breaks = quantile(state_border_subset$delay, seq(0, 1, 0.2), na.rm = TRUE),
+                                             c(paste(round(quantile(state_border_subset$delay, 0, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.2, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.2, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.4, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.4, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.6, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.6, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.8, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.8, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 1, na.rm = TRUE), 2), sep = "")), include.lowest = TRUE)
     }
+    plot3 <- ggplot(state_border_subset) +
+      geom_polygon(aes(x = long, y = lat, group = group, fill = delay_color), 
+                   color = "black") + coord_map("polyconic") + 
+      scale_fill_manual(values = c("purple", "plum",
+                                   "pink", "gold", "orange"),
+                        na.value = "black") +
+      labs(title = "Average Departure Delays By State in 2015",
+           x = "Longitude", y = "Latitude", 
+           fill = "Average \nDelay Time \n(minutes)") + nikitagu_315_theme
     return(plot3)
   })
+  output$main_plot3b  <- renderPlot({
+    if(input$subset_data_3b == "All") {
+      state_border_subset <- state_borders
+      state_border_subset$delay_color <- cut(state_border_subset$delay, 
+                                             breaks = quantile(state_border_subset$delay, seq(0, 1, 0.2), na.rm = TRUE),
+                                             c(paste(round(quantile(state_border_subset$delay, 0, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.2, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.2, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.4, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.4, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.6, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.6, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.8, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.8, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 1, na.rm = TRUE), 2), sep = "")), include.lowest = TRUE)
+    } else {
+      state_border_subset <- state_borders_airline %>% dplyr::filter(as.character(AIRLINE_FULL) == input$subset_data_3b)
+      state_border_subset$delay_color <- cut(state_border_subset$delay, 
+                                             breaks = quantile(state_border_subset$delay, seq(0, 1, 0.2), na.rm = TRUE),
+                                             c(paste(round(quantile(state_border_subset$delay, 0, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.2, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.2, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.4, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.4, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.6, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.6, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 0.8, na.rm = TRUE), 2), sep = ""),
+                                               paste(round(quantile(state_border_subset$delay, 0.8, na.rm = TRUE), 2), "-", round(quantile(state_border_subset$delay, 1, na.rm = TRUE), 2), sep = "")), include.lowest = TRUE)
+    }
+    plot3b <- ggplot(state_border_subset) +
+      geom_polygon(aes(x = long, y = lat, group = group, fill = delay_color), 
+                   color = "black") + coord_map("polyconic") + 
+      scale_fill_manual(values = c("purple", "plum",
+                                   "pink", "gold", "orange"),
+                        na.value = "black") +
+      labs(title = "Average Departure Delays By State in 2015",
+           x = "Longitude", y = "Latitude", 
+           fill = "Average \nDelay Time \n(minutes)") + nikitagu_315_theme
+    return(plot3b)
+  })
+  
   output$main_plot4 <- renderPlot({
     if(input$subset_data_4 == "All") {
       plot4 <- ggplot(data = flights_day_region_airline, 
@@ -222,35 +259,38 @@ function(input, output){
       ) + nikitagu_315_theme
     if("Departure" %in% input$add_dep_arr) {
       plot <- plot + geom_line(data = ts_dep_react(), 
-                               aes_string(x = "DATE", y = input$ts,
+                               aes_string(x = "DATE", 
+                                          y = paste(unlist(strsplit(input$ts, split = " ")), 
+                                                    collapse = ""),
                                           text = "DATE"),
                                color = "purple")
     }
     if("Arrival" %in% input$add_dep_arr) {
       plot <- plot +  geom_line(data = ts_arr_react(), 
-                                aes_string(x = "DATE", y = input$ts,
+                                aes_string(x = "DATE", paste(unlist(strsplit(input$ts, split = " ")), 
+                                                             collapse = ""),
                                            text = "DATE"),
                                 color = "orange", alpha = 0.75)
     }
-    if(input$add_dep_ma & input$ts == "NumberofDelays") {
+    if(input$add_dep_ma & input$ts == "Number of Delays") {
       plot <- plot + geom_line(data = ts_dep_react(),
                                aes(x = DATE, y = dep_ma_28_num,
                                    text = DATE),
                                color = "red", alpha = 0.75)
     }
-    if(input$add_dep_ma & input$ts == "AverageDelayTime") {
+    if(input$add_dep_ma & input$ts == "Average Delay Time") {
       plot <- plot + geom_line(data = ts_dep_react(),
                                aes(x = DATE, y = dep_ma_28_avg,
                                    text = DATE),
                                color = "red", alpha = 0.75)
     }
-    if(input$add_arr_ma & input$ts == "NumberofDelays") {
+    if(input$add_arr_ma & input$ts == "Number of Delays") {
       plot <- plot + geom_line(data = ts_arr_react(),
                                aes(x = DATE, y = arr_ma_28_num,
                                    text = DATE),
                                color = "blue", alpha = 0.75)
     }
-    if(input$add_arr_ma & input$ts == "AverageDelayTime") {
+    if(input$add_arr_ma & input$ts == "Average Delay Time") {
       plot <- plot + geom_line(data = ts_arr_react(),
                                aes(x = DATE, y = arr_ma_28_avg,
                                    text = DATE),

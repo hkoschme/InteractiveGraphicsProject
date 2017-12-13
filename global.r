@@ -21,9 +21,18 @@ library(ggplot2)
 library(ggmap)
 library(maps)
 #load data
-flights <- fread("flights.csv")
-airports <- read.csv("airports.csv")
-airlines <- read.csv("airlines.csv")
+flights_percent_delay <- readRDS("flights_percent_delay.rds")
+state_borders <- readRDS("state_borders.rds")
+state_borders_airline <- readRDS("state_borders_airline.rds")
+dep_delay_ts <- readRDS("dep_delay_ts.rds")
+arr_delay_ts <- readRDS("arr_delay_ts.rds")
+us_data_dep <- readRDS("us_data_dep.rds")
+us_data_arr <- readRDS("us_data_arr.rds")
+us_data_dep_by_region <- readRDS("us_data_dep_by_region.rds")
+us_data_arr_by_region <- readRDS("us_data_arr_by_region.rds")
+dep_by_state_season <- readRDS("dep_by_state_season.rds")
+arr_by_state_season <- readRDS("arr_by_state_season.rds")
+
 
 #add theme
 nikitagu_315_theme <-  theme_bw() + 
@@ -208,6 +217,19 @@ dep_by_state_season <- dep_by_state_season %>%
 arr_by_state_season <- arr_by_state_season %>% 
   mutate(D_STATE_NAME = tolower(state.name[match(D_STATE, state.abb)]))
 
+dep_by_state_season$O_STATE <- as.character(dep_by_state_season$O_STATE)
+arr_by_state_season$O_STATE <- as.character(arr_by_state_season$D_STATE)
+
+dep_by_state_season <- data_frame(O_STATE = c(dep_by_state_season$O_STATE, "DE", "DE"),
+                                  SEASON = c(dep_by_state_season$SEASON, "Summer", "Fall"),
+                                  COUNT = c(dep_by_state_season$COUNT, 0, 0),
+                                  O_STATE_NAME = c(dep_by_state_season$O_STATE_NAME, "delaware", "delaware"))
+
+arr_by_state_season <- data_frame(D_STATE = c(arr_by_state_season$D_STATE, "DE", "DE"),
+                                  SEASON = c(arr_by_state_season$SEASON, "Summer", "Fall"),
+                                  COUNT = c(arr_by_state_season$COUNT, 0, 0),
+                                  D_STATE_NAME = c(arr_by_state_season$D_STATE_NAME, "delaware", "delaware"))
+
 get_grpPoly <- function(group, ID, df) {
   Polygon(coordinates(df[which(df$region==ID & df$group==group), c("long", "lat")]),
           hole = FALSE)
@@ -228,6 +250,22 @@ new_data <- flights %>%
 new_data <- left_join(new_data, state_data, by = c("ORIGIN_STATE" = "state.abb"))
 state_borders <- left_join(state_borders, new_data, by = c("region" = "state.name"))
 state_borders <- state_borders[!is.na(state_borders$AIRLINE_FULL),]
+
+state_borders_airline <- ggplot2::map_data("state")
+state_data_airline <- c()
+for(i in 1:length(unique(flights$AIRLINE_FULL))) {
+  d1 <- data_frame(state.abb, state.name = tolower(state.name),  AIRLINE_FULL = unique(flights$AIRLINE_FULL)[i])
+  state_data_airline <- rbind(state_data_airline, d1)
+}
+state_data_airline <- as_data_frame(state_data_airline)
+new_data_airline <- flights %>% 
+  group_by(ORIGIN_STATE, AIRLINE_FULL) %>% dplyr::summarize(Count = n(), 
+                                                            delay = mean(DEPARTURE_DELAY, 
+                                                                         na.rm = TRUE))
+new_data_airline <- left_join(state_data_airline, new_data_airline, by = c("state.abb" = "ORIGIN_STATE",
+                                                                           "AIRLINE_FULL" = "AIRLINE_FULL"))
+state_borders_airline <- left_join(state_borders_airline, new_data_airline, by = c("region" = "state.name"))
+
 
 #NIKITA: add code for 4th plot
 #create new df getting average delay by airline, day of week, region
@@ -307,62 +345,88 @@ pittsburgh_flights_destination <- flights[flights$DESTINATION_AIRPORT ==
                                                     "DESTINATION_AIRPORT")]
 
 
-#adding airport data to flights to and from Pittsburgh
-pittsburgh_flights_origin <- left_join(pittsburgh_flights_origin, 
-                                       airports[,c("CITY", "LATITUDE", 
-                                                 "LONGITUDE", "AIRPORT",
-                                                 "IATA_CODE")], 
-                                       by = c("ORIGIN_AIRPORT" = "IATA_CODE"))
-names(pittsburgh_flights_origin) <- c("DAY_OF_WEEK","AIRLINE","ORIGIN_AIRPORT",
-                     "DESTINATION_AIRPORT","o_CITY","o_LATITUDE", 
-                     "o_LONGITUDE", "o_AIRPORT")
-pittsburgh_flights_origin <- left_join(pittsburgh_flights_origin, 
-                                       airports[,c("CITY", "LATITUDE", 
-                                                   "LONGITUDE", "AIRPORT",
-                                                   "IATA_CODE")], 
-                                       by = c("DESTINATION_AIRPORT" = "IATA_CODE"))
-names(pittsburgh_flights_origin) <- c("DAY_OF_WEEK","AIRLINE","ORIGIN_AIRPORT",
-                     "DESTINATION_AIRPORT", "o_CITY","o_LATITUDE", 
-                     "o_LONGITUDE", "o_AIRPORT", "d_CITY","d_LATITUDE",
-                     "d_LONGITUDE", "d_AIRPORT")
+####number of flights from and to pittsburgh
+summary_pitt_origin <- pittsburgh_flights_origin %>%
+  group_by(DESTINATION_AIRPORT) %>%
+  dplyr::summarize(
+    most_traveled = n()
+  ) 
+
+summary_pitt_dest <- pittsburgh_flights_destination %>%
+  group_by(ORIGIN_AIRPORT) %>%
+  dplyr::summarize(
+    most_traveled = n()
+  ) 
+
+summary_pitt_origin <- as.data.frame(summary_pitt_origin)
+summary_pitt_dest <- as.data.frame(summary_pitt_dest)
 
 
+##### adding lat lon data to summary flights to and from pittsburgh
+##adding lat lon of destinations to pittsburgh originating flights summary 
+summary_pitt_origin <- left_join(summary_pitt_origin, 
+                                 airports[,c("CITY", "LATITUDE",
+                                             "LONGITUDE","AIRPORT",
+                                             "IATA_CODE")], 
+                                 by = c("DESTINATION_AIRPORT" =
+                                          "IATA_CODE"))
+names(summary_pitt_origin) <- c("DESTINATION_AIRPORT", "most_traveled", "d_CITY","d_LATITUDE",
+                                "d_LONGITUDE", "d_Name")
+
+#adding pittsburgh as the origin 
+summary_pitt_origin$ORIGIN_AIRPORT <- rep("PIT",times = nrow(summary_pitt_origin))
+##adding lat lon of pittsburgh to pittsburgh originating flights summary
+summary_pitt_origin <- left_join(summary_pitt_origin, 
+                                 airports[,c("CITY", "LATITUDE",
+                                             "LONGITUDE","AIRPORT",
+                                             "IATA_CODE")], 
+                                 by = c("ORIGIN_AIRPORT" =
+                                          "IATA_CODE"))
+names(summary_pitt_origin) <- c("DESTINATION_AIRPORT", "most_traveled", "d_CITY","d_LATITUDE",
+                                "d_LONGITUDE", "d_Airport", "ORIGIN_AIRPORT","o_CITY","o_LATITUDE",
+                                "o_LONGITUDE", "o_Airport")
 
 
-pittsburgh_flights_destination <- left_join(pittsburgh_flights_destination, 
-                                       airports[,c("CITY", "LATITUDE", 
-                                                   "LONGITUDE", "AIRPORT",
-                                                   "IATA_CODE")], 
-                                       by = c("ORIGIN_AIRPORT" = "IATA_CODE"))
-names(pittsburgh_flights_destination) <- c("DAY_OF_WEEK","AIRLINE","ORIGIN_AIRPORT",
-                                      "DESTINATION_AIRPORT","o_CITY","o_LATITUDE", 
-                                      "o_LONGITUDE", "o_AIRPORT")
-pittsburgh_flights_destination <- left_join(pittsburgh_flights_destination, 
-                                            airports[,c("CITY", "LATITUDE", 
-                                                        "LONGITUDE", "AIRPORT",
-                                                        "IATA_CODE")], 
-                                       by = c("DESTINATION_AIRPORT" = "IATA_CODE"))
-names(pittsburgh_flights_destination) <- c("DAY_OF_WEEK","AIRLINE","ORIGIN_AIRPORT",
-                                      "DESTINATION_AIRPORT", "o_CITY","o_LATITUDE", 
-                                      "o_LONGITUDE", "o_AIRPORT", "d_CITY","d_LATITUDE",
-                                      "d_LONGITUDE", "d_AIRPORT")
+##adding lat lon of origins to pittsburgh destination flights summary
+summary_pitt_dest <- left_join(summary_pitt_dest, 
+                               airports[,c("CITY", "LATITUDE", 
+                                           "LONGITUDE", "AIRPORT",
+                                           "IATA_CODE")], 
+                               by = c("ORIGIN_AIRPORT" = "IATA_CODE"))
+names(summary_pitt_dest) <- c("ORIGIN_AIRPORT", "most_traveled",
+                              "o_CITY","o_LATITUDE", 
+                              "o_LONGITUDE", "o_AIRPORT")
+
+#adding pittsburgh as destination to pittsburgh destination flights summary
+summary_pitt_dest$DESTINATION_AIRPORT <- rep("PIT", nrow(summary_pitt_dest))
+##adding lat lon of 
+summary_pitt_dest <- left_join(summary_pitt_dest, 
+                               airports[,c("CITY", "LATITUDE", 
+                                           "LONGITUDE", "AIRPORT",
+                                           "IATA_CODE")], 
+                               by = c("DESTINATION_AIRPORT" = "IATA_CODE"))
+names(summary_pitt_dest) <- c("ORIGIN_AIRPORT", "most_traveled",
+                              "o_CITY", "o_LATITUDE", 
+                              "o_LONGITUDE", "o_AIRPORT", "DESTINATION_AIRPORT",
+                              "d_CITY","d_LATITUDE", 
+                              "d_LONGITUDE", "d_AIRPORT")
 
 
 
 # destination_arc <- list()
-# for(i in 1:nrow(pittsburgh_flights_destination)){
-#   arc <- gcIntermediate( c(pittsburgh_flights_destination[i, "o_LONGITUDE"], pittsburgh_flights_destination[i, "o_LATITUDE"]), 
-#                                      c(pittsburgh_flights_destination[i, "d_LONGITUDE"], pittsburgh_flights_destination[i, "d_LATITUDE"]), 
+# for(i in 1:nrow(summary_pitt_dest)){
+#   arc <- gcIntermediate( c(summary_pitt_dest[i, "o_LONGITUDE"], summary_pitt_dest[i, "o_LATITUDE"]),
+#                          c(summary_pitt_dest[i, "d_LONGITUDE"], summary_pitt_dest[i, "d_LATITUDE"]),
 #                                      n=1000, addStartEnd=TRUE, sp =TRUE )
 #   destination_arc[[i]] <- arc
 # }
-# 
-# origin_arc <- list()
-# for(i in 1:nrow(pittsburgh_flights_origin)){
-#   arc <- gcIntermediate( c(pittsburgh_flights_origin[i, "o_LONGITUDE"], pittsburgh_flights_origin[i, "o_LATITUDE"]), 
-#                          c(pittsburgh_flights_origin[i, "d_LONGITUDE"], pittsburgh_flights_origin[i, "d_LATITUDE"]), 
-#                          n=1000, addStartEnd=TRUE, sp =TRUE )
-#   origin_arc[[i]] <- arc
-# 
-# }
+
+origin_arc <- list()
+for(i in 1:nrow(summary_pitt_origin)){
+  arc <- gcIntermediate( c(summary_pitt_origin[i, "o_LONGITUDE"], summary_pitt_origin[i, "o_LATITUDE"]),
+                         c(summary_pitt_origin[i, "d_LONGITUDE"], summary_pitt_origin[i, "d_LATITUDE"]),
+                         n=1000, addStartEnd=TRUE, sp =TRUE )
+  origin_arc[[i]] <- arc
+
+}
 

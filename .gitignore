@@ -6,3 +6,5 @@ flights.csv
 flights.csv.zip
 airports.csv
 airlines.csv
+airport_usdot.csv
+runthis.r
