@@ -1,0 +1,13 @@
+name: interactivegraphicsproject1
+title: InteractiveGraphicsProject1
+username:
+account: hkoschme
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 248067
+bundleId: 1131945
+url: https://hkoschme.shinyapps.io/interactivegraphicsproject1/
+when: 1513153510.65403
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: .gitattributes|.Rapp.history|.RData|.RDataTmp|airlines.csv|airport_usdot.csv|flights.csv|project_description.md|README.md|runthis.r|runthis2.R

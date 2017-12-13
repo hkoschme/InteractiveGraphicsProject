@@ -1,3 +1,26 @@
+#load libraries
+library(shiny)
+library(shinydashboard)
+library(devtools)
+library(leaflet)
+library(plotly)
+library(tidyverse)
+library(forcats)
+library(reshape2)
+library(sp)
+library(datasets)
+library(plyr)
+library(dplyr)
+library(data.table)
+library(htmltools)
+library(geosphere)
+library(rgeos)
+library(scales)
+library(ggplot2)
+library(ggmap)
+library(maps)
+library(rsconnect)
+
 function(input, output){
   output$leaflet1 <- renderLeaflet({
     
